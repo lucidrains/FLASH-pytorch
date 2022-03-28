@@ -12,11 +12,13 @@ $ pip install FLASH-pytorch
 
 ## Usage
 
-The main novel circuit in this paper is the "Gated Attention Unit", which they claim can replace multi-headed attention while reducing it to just one head. It uses a relu squared activation in place of the softmax, which was first seen in the <a href="https://arxiv.org/abs/2109.08668">Primer paper</a>
+The main novel circuit in this paper is the "Gated Attention Unit", which they claim can replace multi-headed attention while reducing it to just one head.
+
+It uses a relu squared activation in place of the softmax, the activation of which was first seen in the <a href="https://arxiv.org/abs/2109.08668">Primer paper</a>, and the use of ReLU in <a href="https://arxiv.org/abs/2104.07012">ReLA Transformer</a>. The gating style seems mostly inspired by <a href="https://arxiv.org/abs/2105.08050">gMLPs</a>.
 
 ```python
-from flash_pytorch import GAU
 import torch
+from flash_pytorch import GAU
 
 model = GAU(
     dim = 512,
