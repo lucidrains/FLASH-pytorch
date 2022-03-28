@@ -20,14 +20,15 @@ It uses a relu squared activation in place of the softmax, the activation of whi
 import torch
 from flash_pytorch import GAU
 
-model = GAU(
+gau = GAU(
     dim = 512,
-    query_key_dim = 128,
-    hidden_dim = 1024
+    query_key_dim = 128,     # query / key dimension
+    causal = True,           # autoregressive or not
+    expansion_factor = 2,    # hidden dimension = dim * expansion_factor
 )
 
 x = torch.randn(1, 1024, 512)
-out = model(x) # (1, 1024, 512)
+out = gau(x) # (1, 1024, 512)
 ```
 
 ## Citations

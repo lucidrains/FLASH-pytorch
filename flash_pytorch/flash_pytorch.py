@@ -28,17 +28,25 @@ class GAU(nn.Module):
         *,
         dim,
         query_key_dim = 128,
-        hidden_dim = None,
-        add_residual = True
+        expansion_factor = 2.,
+        add_residual = True,
+        causal = False
     ):
         super().__init__()
-        self.scale = query_key_dim ** -0.5
+        hidden_dim = int(expansion_factor * dim)
 
-        hidden_dim = default(hidden_dim, dim * 2)
         self.norm = nn.LayerNorm(dim)
-        self.to_hidden = nn.Linear(dim, hidden_dim * 2)
+        self.causal = causal
 
-        self.to_qk = nn.Linear(dim, query_key_dim, bias = False)
+        self.to_hidden = nn.Sequential(
+            nn.Linear(dim, hidden_dim * 2),
+            nn.SiLU()
+        )
+
+        self.to_qk = nn.Sequential(
+            nn.Linear(dim, query_key_dim),
+            nn.SiLU()
+        )
 
         self.q_offsetscale = OffsetScale(query_key_dim)
         self.k_offsetscale = OffsetScale(query_key_dim)
@@ -51,17 +59,22 @@ class GAU(nn.Module):
         x,
         rel_pos_bias = None
     ):
+        seq_len, device = x.shape[-2], x.device
         v, gate = self.to_hidden(x).chunk(2, dim = -1)
 
         qk = self.to_qk(x)
         q, k = self.q_offsetscale(qk), self.k_offsetscale(qk)
 
-        sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
+        sim = einsum('b i d, b j d -> b i j', q, k) / seq_len
 
         if exists(rel_pos_bias):
             sim = sim + rel_pos_bias
 
         attn = F.relu(sim) ** 2
+
+        if self.causal:
+            causal_mask = torch.ones((seq_len, seq_len), dtype = torch.bool, device = device).triu(1)
+            sim = sim.masked_fill(causal_mask, 0.)
 
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = out * gate
