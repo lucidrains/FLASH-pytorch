@@ -1,3 +1,5 @@
+<img src="./flash.png" width="500px"></img>
+
 ## FLASH - Pytorch (wip)
 
 Implementation of the Transformer variant proposed in the paper <a href="https://arxiv.org/abs/2202.10447">Transformer Quality in Linear Time</a>
