@@ -65,7 +65,12 @@ class GAU(nn.Module):
         qk = self.to_qk(x)
         q, k = self.q_offsetscale(qk), self.k_offsetscale(qk)
 
-        sim = einsum('b i d, b j d -> b i j', q, k) / seq_len
+        sim = einsum('b i d, b j d -> b i j', q, k)
+
+        if self.causal:
+            sim = sim / rearrange(torch.arange(seq_len, device = device) + 1, '... -> ... 1')
+        else:
+            sim = sim / seq_len
 
         if exists(rel_pos_bias):
             sim = sim + rel_pos_bias
