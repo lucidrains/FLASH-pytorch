@@ -3,12 +3,12 @@ from setuptools import setup, find_packages
 setup(
   name = 'FLASH-pytorch',
   packages = find_packages(exclude=[]),
-  version = '0.0.1',
+  version = '0.0.2',
   license='MIT',
   description = 'FLASH - Transformer Quality in Linear Time - Pytorch',
   author = 'Phil Wang',
   author_email = 'lucidrains@gmail.com',
-  url = 'https://github.com/lucidrains/F-pytorch',
+  url = 'https://github.com/lucidrains/FLASH-pytorch',
   keywords = [
     'artificial intelligence',
     'deep learning',

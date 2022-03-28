@@ -20,7 +20,7 @@ class OffsetScale(nn.Module):
         self.beta = nn.Parameter(torch.zeros(dim))
 
     def forward(self, x):
-        return x * self.gamma * self.beta
+        return x * self.gamma + self.beta
 
 class GAU(nn.Module):
     def __init__(
