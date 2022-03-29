@@ -383,6 +383,8 @@ class FLASHTransformer(nn.Module):
         self.group_size = group_size
 
         rotary_pos_emb = RotaryEmbedding(dim = min(32, query_key_dim))
+        # max rotary embedding dimensions of 32, partial Rotary embeddings, from Wang et al - GPT-J
+
         self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass, shift_tokens = shift_tokens) for _ in range(depth)])
 
         self.to_logits = nn.Sequential(

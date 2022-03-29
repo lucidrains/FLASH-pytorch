@@ -41,7 +41,8 @@ model = FLASHTransformer(
     dim = 512,
     depth = 8,
     causal = True,
-    group_size = 256
+    group_size = 256,
+    shift_tokens = True
 )
 
 model = AutoregressiveWrapper(model)
