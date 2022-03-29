@@ -386,8 +386,6 @@ class FLASHTransformer(nn.Module):
         *,
         mask = None
     ):
-        device = x.device
-
         x = self.token_emb(x)
         x = self.abs_pos_emb(x) + x
 
