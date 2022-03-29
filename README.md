@@ -84,10 +84,23 @@ $ python train.py
 
 ```bibtex
 @article{Hua2022TransformerQI,
-  title   = {Transformer Quality in Linear Time},
-  author  = {Weizhe Hua and Zihang Dai and Hanxiao Liu and Quoc V. Le},
-  journal = {ArXiv},
-  year    = {2022},
-  volume  = {abs/2202.10447}
+    title   = {Transformer Quality in Linear Time},
+    author  = {Weizhe Hua and Zihang Dai and Hanxiao Liu and Quoc V. Le},
+    journal = {ArXiv},
+    year    = {2022},
+    volume  = {abs/2202.10447}
+}
+```
+
+```bibtex
+@software{peng_bo_2021_5196578,
+    author    = {PENG Bo},
+    title     = {BlinkDL/RWKV-LM: 0.01},
+    month     = {aug},
+    year      = {2021},
+    publisher = {Zenodo},
+    version   = {0.01},
+    doi       = {10.5281/zenodo.5196578},
+    url       = {https://doi.org/10.5281/zenodo.5196578}
 }
 ```

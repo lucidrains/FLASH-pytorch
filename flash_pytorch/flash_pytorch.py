@@ -209,12 +209,14 @@ class FLASH(nn.Module):
         causal = False,
         dropout = 0.,
         rotary_pos_emb = None,
-        norm_klass = nn.LayerNorm
+        norm_klass = nn.LayerNorm,
+        shift_tokens = False
     ):
         super().__init__()
         hidden_dim = int(dim * expansion_factor)
         self.group_size = group_size
         self.causal = causal
+        self.shift_tokens = shift_tokens
 
         # positional embeddings
 
@@ -262,6 +264,13 @@ class FLASH(nn.Module):
         # prenorm
 
         normed_x = self.norm(x)
+
+        # do token shift - a great, costless trick from an independent AI researcher in Shenzhen
+
+        if self.shift_tokens:
+            x_shift, x_pass = normed_x.chunk(2, dim = -1)
+            x_shift = F.pad(x_shift, (0, 0, 1, -1), value = 0.)
+            normed_x = torch.cat((x_shift, x_pass), dim = -1)
 
         # initial projections
 
@@ -358,7 +367,8 @@ class FLASHTransformer(nn.Module):
         expansion_factor = 2.,
         causal = False,
         attn_dropout = 0.,
-        norm_type = 'scalenorm'
+        norm_type = 'scalenorm',
+        shift_tokens = True
     ):
         super().__init__()
         assert norm_type in ('scalenorm', 'layernorm'), 'norm_type must be one of scalenorm or layernorm'
@@ -373,7 +383,7 @@ class FLASHTransformer(nn.Module):
         self.group_size = group_size
 
         rotary_pos_emb = RotaryEmbedding(dim = min(32, query_key_dim))
-        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass) for _ in range(depth)])
+        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass, shift_tokens = shift_tokens) for _ in range(depth)])
 
         self.to_logits = nn.Sequential(
             nn.LayerNorm(dim),
