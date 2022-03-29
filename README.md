@@ -31,6 +31,53 @@ x = torch.randn(1, 1024, 512)
 out = gau(x) # (1, 1024, 512)
 ```
 
+The authors then combine `GAU` with Katharopoulos linear attention, using grouping of the sequences to overcome a known issue with autoregressive linear attention.
+
+This combination of the quadratic gated attention unit with grouped linear attention they named FLASH
+
+You can also use this quite easily
+
+```python
+import torch
+from flash_pytorch import FLASH
+
+flash = FLASH(
+    dim = 512,
+    group_size = 256,             # group size
+    causal = True,                # autoregressive or not
+    query_key_dim = 128,          # query / key dimension
+    expansion_factor = 2.         # hidden dimension = dim * expansion_factor
+)
+
+x = torch.randn(1, 1111, 512)     # sequence will be auto-padded to nearest group size
+out = flash(x) # (1, 1111, 512)
+```
+
+Finally, you can use the full FLASH transformer as mentioned in the paper. This contains all the positional embeddings mentioned in the paper. Absolute positional embedding uses scaled sinusoidal. GAU quadratic attention will get one-headed T5 relative positional bias. On top of all this, both GAU attention as well as the linear attention will be rotary embedded (RoPE).
+
+```python
+import torch
+from flash_pytorch import FLASHTransformer
+
+model = FLASHTransformer(
+    num_tokens = 20000,          # number of tokens
+    dim = 512,                   # model dimension
+    depth = 12,                  # depth
+    causal = True,               # autoregressive or not
+    group_size = 256,            # size of the groups
+    query_key_dim = 128,         # dimension of queries / keys
+    expansion_factor = 2.,       # hidden dimension = dim * expansion_factor
+    norm_type = 'scalenorm'      # in the paper, they claimed scalenorm led to faster training at no performance hit. the other option is 'layernorm' (also default)
+)
+
+x = torch.randint(0, 20000, (1, 1024))
+logits = model(x) # (1, 1024, 20000)
+```
+
+## Todo
+
+- [ ] handle masking for non-autoregressive
+
 ## Citations
 
 ```bibtex
