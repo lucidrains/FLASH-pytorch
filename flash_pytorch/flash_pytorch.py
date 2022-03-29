@@ -231,7 +231,6 @@ class FLASH(nn.Module):
         )
 
         self.qk_offset_scale = OffsetScale(query_key_dim, heads = 4)
-        self.v_offset_scale = OffsetScale(hidden_dim, heads = 2)
 
         self.to_out = nn.Linear(hidden_dim, dim)
 
@@ -265,7 +264,6 @@ class FLASH(nn.Module):
 
         # offset and scale
 
-        quad_v, lin_v = self.v_offset_scale(v)
         quad_q, lin_q, quad_k, lin_k = self.qk_offset_scale(qk)
 
         # rotate queries and keys
@@ -278,11 +276,11 @@ class FLASH(nn.Module):
         padding = padding_to_multiple_of(n, g)
 
         if padding > 0:
-            quad_q, quad_k, quad_v, lin_q, lin_k, lin_v = map(lambda t: F.pad(t, (0, 0, 0, padding), value = 0.), (quad_q, quad_k, quad_v, lin_q, lin_k, lin_v))
+            quad_q, quad_k, lin_q, lin_k, v = map(lambda t: F.pad(t, (0, 0, 0, padding), value = 0.), (quad_q, quad_k, lin_q, lin_k, v))
 
         # group along sequence
 
-        quad_q, quad_k, quad_v, lin_q, lin_k, lin_v = map(lambda t: rearrange(t, 'b (g n) d -> b g n d', n = self.group_size), (quad_q, quad_k, quad_v, lin_q, lin_k, lin_v))
+        quad_q, quad_k, lin_q, lin_k, v = map(lambda t: rearrange(t, 'b (g n) d -> b g n d', n = self.group_size), (quad_q, quad_k, lin_q, lin_k, v))
 
         # calculate quadratic attention output
 
@@ -298,12 +296,12 @@ class FLASH(nn.Module):
             causal_mask = torch.ones((g, g), dtype = torch.bool, device = device).triu(1)
             attn = attn.masked_fill(causal_mask, 0.)
 
-        quad_out = einsum('... i j, ... j d -> ... i d', attn, quad_v)
+        quad_out = einsum('... i j, ... j d -> ... i d', attn, v)
 
         # calculate linear attention output
 
         if self.causal:
-            lin_kv = einsum('b g n d, b g n e -> b g d e', lin_k, lin_v) / g
+            lin_kv = einsum('b g n d, b g n e -> b g d e', lin_k, v) / g
 
             # exclusive cumulative sum along group dimension
 
@@ -312,7 +310,7 @@ class FLASH(nn.Module):
 
             lin_out = einsum('b g d e, b g n d -> b g n e', lin_kv, lin_q)
         else:
-            lin_kv = einsum('b g n d, b g n e -> b d e', lin_k, lin_v) / n
+            lin_kv = einsum('b g n d, b g n e -> b d e', lin_k, v) / n
             lin_out = einsum('b g n d, b d e -> b g n e', lin_q, lin_kv)
 
         # fold back groups into full sequence, and excise out padding

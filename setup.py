@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
   name = 'FLASH-pytorch',
   packages = find_packages(exclude=[]),
-  version = '0.0.10',
+  version = '0.0.11',
   license='MIT',
   description = 'FLASH - Transformer Quality in Linear Time - Pytorch',
   author = 'Phil Wang',
