@@ -76,7 +76,7 @@ logits = model(x) # (1, 1024, 20000)
 
 ## Todo
 
-- [ ] handle masking for non-autoregressive
+- [x] handle masking for non-autoregressive
 - [ ] add an improvement to chunked GAU, where each window can look back an extra window (like overlapped local attention)
 
 ## Citations

@@ -158,7 +158,8 @@ class GAU(nn.Module):
     def forward(
         self,
         x,
-        rel_pos_bias = None
+        rel_pos_bias = None,
+        mask = None
     ):
         seq_len, device = x.shape[-2], x.device
 
@@ -168,18 +169,17 @@ class GAU(nn.Module):
         qk = self.to_qk(normed_x)
         q, k = self.offsetscale(qk)
 
-        sim = einsum('b i d, b j d -> b i j', q, k)
-
-        if self.causal:
-            sim = sim / rearrange(torch.arange(seq_len, device = device) + 1, '... -> ... 1')
-        else:
-            sim = sim / seq_len
+        sim = einsum('b i d, b j d -> b i j', q, k) / seq_len
 
         if exists(rel_pos_bias):
             sim = sim + rel_pos_bias
 
         attn = F.relu(sim) ** 2
         attn = self.dropout(attn)
+
+        if exists(mask):
+            mask = rearrange(mask, 'b j -> b 1 j')
+            attn = attn.masked_fill(~mask, 0.)
 
         if self.causal:
             causal_mask = torch.ones((seq_len, seq_len), dtype = torch.bool, device = device).triu(1)
@@ -266,6 +266,11 @@ class FLASH(nn.Module):
 
         quad_q, lin_q, quad_k, lin_k = self.qk_offset_scale(qk)
 
+        # mask out linear attention keys
+
+        if exists(mask):
+            lin_k = lin_k.masked_fill(~mask, 0.)
+
         # rotate queries and keys
 
         if exists(self.rotary_pos_emb):
@@ -278,9 +283,15 @@ class FLASH(nn.Module):
         if padding > 0:
             quad_q, quad_k, lin_q, lin_k, v = map(lambda t: F.pad(t, (0, 0, 0, padding), value = 0.), (quad_q, quad_k, lin_q, lin_k, v))
 
+            if exists(mask):
+                mask = F.pad(mask, (0, padding), value = False)
+
         # group along sequence
 
         quad_q, quad_k, lin_q, lin_k, v = map(lambda t: rearrange(t, 'b (g n) d -> b g n d', n = self.group_size), (quad_q, quad_k, lin_q, lin_k, v))
+
+        if exists(mask):
+            mask = rearrange(mask, 'b (g j) -> b g 1 j', j = g)
 
         # calculate quadratic attention output
 
@@ -291,6 +302,9 @@ class FLASH(nn.Module):
 
         attn = F.relu(sim) ** 2
         attn = self.dropout(attn)
+
+        if exists(mask):
+            attn = attn.masked_fill(~mask, 0.)
 
         if self.causal:
             causal_mask = torch.ones((g, g), dtype = torch.bool, device = device).triu(1)
@@ -377,6 +391,6 @@ class FLASHTransformer(nn.Module):
         rel_pos_bias = self.rel_pos_bias(self.group_size, self.group_size, device = device)
 
         for flash in self.layers:
-            x = flash(x, rel_pos_bias = rel_pos_bias)
+            x = flash(x, mask = mask, rel_pos_bias = rel_pos_bias)
 
         return self.to_logits(x)
