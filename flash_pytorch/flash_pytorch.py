@@ -126,12 +126,13 @@ class GAU(nn.Module):
         expansion_factor = 2.,
         add_residual = True,
         causal = False,
-        dropout = 0.
+        dropout = 0.,
+        norm_klass = nn.LayerNorm
     ):
         super().__init__()
         hidden_dim = int(expansion_factor * dim)
 
-        self.norm = nn.LayerNorm(dim)
+        self.norm = norm_klass(dim)
         self.causal = causal
         self.dropout = nn.Dropout(dropout)
 
