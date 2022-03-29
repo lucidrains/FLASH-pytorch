@@ -251,7 +251,7 @@ class FLASH(nn.Module):
         j - sequence dimension (target)
         """
 
-        n, device, g = x.shape[-2], x.device, self.group_size
+        b, n, device, g = x.shape[0], x.shape[-2], x.device, self.group_size
 
         # prenorm
 
@@ -283,8 +283,8 @@ class FLASH(nn.Module):
         if padding > 0:
             quad_q, quad_k, lin_q, lin_k, v = map(lambda t: F.pad(t, (0, 0, 0, padding), value = 0.), (quad_q, quad_k, lin_q, lin_k, v))
 
-            if exists(mask):
-                mask = F.pad(mask, (0, padding), value = False)
+            mask = default(mask, torch.ones((b, n), device = device, dtype = torch.bool))
+            mask = F.pad(mask, (0, padding), value = False)
 
         # group along sequence
 
