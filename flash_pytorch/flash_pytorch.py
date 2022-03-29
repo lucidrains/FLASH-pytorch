@@ -148,7 +148,11 @@ class GAU(nn.Module):
 
         self.offsetscale = OffsetScale(query_key_dim, heads = 2)
 
-        self.to_out = nn.Linear(hidden_dim, dim)
+        self.to_out = nn.Sequential(
+            nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+
         self.add_residual = add_residual
 
     def forward(
