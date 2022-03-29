@@ -67,7 +67,8 @@ model = FLASHTransformer(
     group_size = 256,            # size of the groups
     query_key_dim = 128,         # dimension of queries / keys
     expansion_factor = 2.,       # hidden dimension = dim * expansion_factor
-    norm_type = 'scalenorm'      # in the paper, they claimed scalenorm led to faster training at no performance hit. the other option is 'layernorm' (also default)
+    norm_type = 'scalenorm',     # in the paper, they claimed scalenorm led to faster training at no performance hit. the other option is 'layernorm' (also default)
+    shift_tokens = True          # discovered by an independent researcher in Shenzhen @BlinkDL, this simply shifts half of the feature space forward one step along the sequence dimension - greatly improved convergence even more in my local experiments
 )
 
 x = torch.randint(0, 20000, (1, 1024))
