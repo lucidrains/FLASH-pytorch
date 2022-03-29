@@ -93,7 +93,8 @@ class T5RelativePositionBias(nn.Module):
         ret += torch.where(is_small, n, val_if_large)
         return ret
 
-    def forward(self, i, j, *, device):
+    def forward(self, x):
+        i, j, device = *x.shape[-2:], x.device
         q_pos = torch.arange(i, dtype = torch.long, device = device)
         k_pos = torch.arange(j, dtype = torch.long, device = device)
         rel_pos = rearrange(k_pos, 'j -> 1 j') - rearrange(q_pos, 'i -> i 1')
@@ -215,10 +216,17 @@ class FLASH(nn.Module):
         self.group_size = group_size
         self.causal = causal
 
+        # positional embeddings
+
         self.rotary_pos_emb = rotary_pos_emb
+        self.rel_pos_bias = T5RelativePositionBias(query_key_dim ** 0.5, causal = causal)
+
+        # norm
 
         self.norm = norm_klass(dim)
         self.dropout = nn.Dropout(dropout)
+
+        # projections
 
         self.to_hidden = nn.Sequential(
             nn.Linear(dim, hidden_dim * 2),
@@ -231,15 +239,13 @@ class FLASH(nn.Module):
         )
 
         self.qk_offset_scale = OffsetScale(query_key_dim, heads = 4)
-
         self.to_out = nn.Linear(hidden_dim, dim)
 
     def forward(
         self,
         x,
         *,
-        mask = None,
-        rel_pos_bias = None
+        mask = None
     ):
         """
         b - batch
@@ -297,8 +303,7 @@ class FLASH(nn.Module):
 
         sim = einsum('... i d, ... j d -> ... i j', quad_q, quad_k) / g
 
-        if exists(rel_pos_bias):
-            sim = sim + rel_pos_bias
+        sim = sim + self.rel_pos_bias(sim)
 
         attn = F.relu(sim) ** 2
         attn = self.dropout(attn)
@@ -365,9 +370,7 @@ class FLASHTransformer(nn.Module):
 
         self.token_emb = nn.Embedding(num_tokens, dim)
         self.abs_pos_emb = ScaledSinuEmbedding(dim)
-
         self.group_size = group_size
-        self.rel_pos_bias = T5RelativePositionBias(query_key_dim ** 0.5, causal = causal)
 
         rotary_pos_emb = RotaryEmbedding(dim = min(32, query_key_dim))
         self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass) for _ in range(depth)])
@@ -388,9 +391,7 @@ class FLASHTransformer(nn.Module):
         x = self.token_emb(x)
         x = self.abs_pos_emb(x) + x
 
-        rel_pos_bias = self.rel_pos_bias(self.group_size, self.group_size, device = device)
-
         for flash in self.layers:
-            x = flash(x, mask = mask, rel_pos_bias = rel_pos_bias)
+            x = flash(x, mask = mask)
 
         return self.to_logits(x)

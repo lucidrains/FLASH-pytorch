@@ -74,10 +74,11 @@ x = torch.randint(0, 20000, (1, 1024))
 logits = model(x) # (1, 1024, 20000)
 ```
 
-## Todo
+## Test on Autoregressive Enwik8
 
-- [x] handle masking for non-autoregressive
-- [ ] add an improvement to chunked GAU, where each window can look back an extra window (like overlapped local attention)
+```bash
+$ python train.py
+```
 
 ## Citations
 
