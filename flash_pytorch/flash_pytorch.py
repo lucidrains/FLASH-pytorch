@@ -370,7 +370,7 @@ class FLASHTransformer(nn.Module):
         self.rel_pos_bias = T5RelativePositionBias(query_key_dim ** 0.5, causal = causal)
 
         rotary_pos_emb = RotaryEmbedding(dim = min(32, query_key_dim))
-        self.layers = [FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass) for _ in range(depth)]
+        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass) for _ in range(depth)])
 
         self.to_logits = nn.Sequential(
             nn.LayerNorm(dim),
