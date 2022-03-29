@@ -79,7 +79,7 @@ class GAU(nn.Module):
 
         if self.causal:
             causal_mask = torch.ones((seq_len, seq_len), dtype = torch.bool, device = device).triu(1)
-            sim = sim.masked_fill(causal_mask, 0.)
+            attn = attn.masked_fill(causal_mask, 0.)
 
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = out * gate
