@@ -339,8 +339,8 @@ class FLASH(nn.Module):
 
             lin_out = einsum('b g d e, b g n d -> b g n e', lin_kv, lin_q)
         else:
-            lin_kv = einsum('b g n d, b g n e -> b d e', lin_k, v) / n
-            lin_out = einsum('b g n d, b d e -> b g n e', lin_q, lin_kv)
+            lin_kv = einsum('b g n d, b g n e -> b g d e', lin_k, v) / n
+            lin_out = einsum('b g n d, b g d e -> b g n e', lin_q, lin_kv)
 
         # fold back groups into full sequence, and excise out padding
 
