@@ -210,7 +210,8 @@ class FLASH(nn.Module):
         dropout = 0.,
         rotary_pos_emb = None,
         norm_klass = nn.LayerNorm,
-        shift_tokens = False
+        shift_tokens = False,
+        reduce_group_non_causal_attn = True
     ):
         super().__init__()
         hidden_dim = int(dim * expansion_factor)
@@ -227,6 +228,10 @@ class FLASH(nn.Module):
 
         self.norm = norm_klass(dim)
         self.dropout = nn.Dropout(dropout)
+
+        # whether to reduce groups in non causal linear attention
+
+        self.reduce_group_non_causal_attn = reduce_group_non_causal_attn
 
         # projections
 
@@ -339,8 +344,9 @@ class FLASH(nn.Module):
 
             lin_out = einsum('b g d e, b g n d -> b g n e', lin_kv, lin_q)
         else:
-            lin_kv = einsum('b g n d, b g n e -> b g d e', lin_k, v) / n
-            lin_out = einsum('b g n d, b g d e -> b g n e', lin_q, lin_kv)
+            context_einsum_eq = 'b d e' if self.reduce_group_non_causal_attn else 'b g d e'
+            lin_kv = einsum(f'b g n d, b g n e -> {context_einsum_eq}', lin_k, v) / n
+            lin_out = einsum(f'b g n d, {context_einsum_eq} -> b g n e', lin_q, lin_kv)
 
         # fold back groups into full sequence, and excise out padding
 
@@ -369,7 +375,8 @@ class FLASHTransformer(nn.Module):
         causal = False,
         attn_dropout = 0.,
         norm_type = 'scalenorm',
-        shift_tokens = True
+        shift_tokens = True,
+        reduce_group_non_causal_attn = True
     ):
         super().__init__()
         assert norm_type in ('scalenorm', 'layernorm'), 'norm_type must be one of scalenorm or layernorm'
@@ -386,7 +393,7 @@ class FLASHTransformer(nn.Module):
         rotary_pos_emb = RotaryEmbedding(dim = min(32, query_key_dim))
         # max rotary embedding dimensions of 32, partial Rotary embeddings, from Wang et al - GPT-J
 
-        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass, shift_tokens = shift_tokens) for _ in range(depth)])
+        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass, shift_tokens = shift_tokens, reduce_group_non_causal_attn = reduce_group_non_causal_attn) for _ in range(depth)])
 
         self.to_logits = nn.Sequential(
             nn.LayerNorm(dim),
