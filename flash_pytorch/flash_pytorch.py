@@ -265,7 +265,6 @@ class FLASH(nn.Module):
         """
 
         b, n, device, c = x.shape[0], x.shape[-2], x.device, self.group_size
-        g = math.ceil(n / c)
 
         # prenorm
 
@@ -350,7 +349,6 @@ class FLASH(nn.Module):
 
         # fold back groups into full sequence, and excise out padding
 
-        # import pdb; pdb.set_trace()
         quad_attn_out, lin_attn_out = map(lambda t: rearrange(t, 'b g n d -> b (g n) d')[:, :n], (quad_out, lin_out))
 
         # gate
