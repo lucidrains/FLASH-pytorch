@@ -116,6 +116,20 @@ class OffsetScale(nn.Module):
         out = einsum('... d, h d -> ... h d', x, self.gamma) + self.beta
         return out.unbind(dim = -2)
 
+# activation functions
+
+class ReLUSquared(nn.Module):
+    def forward(self, x):
+        return F.relu(x) ** 2
+
+class LaplacianAttnFn(nn.Module):
+    """ https://arxiv.org/abs/2209.10655 claims this is more stable than Relu squared """
+
+    def forward(self, x):
+        mu = math.sqrt(0.5)
+        std = math.sqrt(0.25 * math.pi)
+        return (1 + torch.special.erf((x - mu) / (std * math.sqrt(2)))) * 0.5
+
 # gated attention unit
 
 class GAU(nn.Module):
@@ -128,6 +142,7 @@ class GAU(nn.Module):
         add_residual = True,
         causal = False,
         dropout = 0.,
+        laplace_attn_fn = False,
         norm_klass = nn.LayerNorm
     ):
         super().__init__()
@@ -136,6 +151,8 @@ class GAU(nn.Module):
         self.norm = norm_klass(dim)
         self.causal = causal
         self.dropout = nn.Dropout(dropout)
+
+        self.attn_fn = ReLUSquared() if not laplace_attn_fn else LaplacianAttnFn()
 
         self.to_hidden = nn.Sequential(
             nn.Linear(dim, hidden_dim * 2),
@@ -175,7 +192,7 @@ class GAU(nn.Module):
         if exists(rel_pos_bias):
             sim = sim + rel_pos_bias
 
-        attn = F.relu(sim) ** 2
+        attn = self.attn_fn(sim)
         attn = self.dropout(attn)
 
         if exists(mask):
@@ -211,6 +228,7 @@ class FLASH(nn.Module):
         rotary_pos_emb = None,
         norm_klass = nn.LayerNorm,
         shift_tokens = False,
+        laplace_attn_fn = False,
         reduce_group_non_causal_attn = True
     ):
         super().__init__()
@@ -218,6 +236,8 @@ class FLASH(nn.Module):
         self.group_size = group_size
         self.causal = causal
         self.shift_tokens = shift_tokens
+
+        self.attn_fn = ReLUSquared() if not laplace_attn_fn else LaplacianAttnFn()
 
         # positional embeddings
 
@@ -320,7 +340,7 @@ class FLASH(nn.Module):
 
         sim = sim + self.rel_pos_bias(sim)
 
-        attn = F.relu(sim) ** 2
+        attn = self.attn_fn(sim)
         attn = self.dropout(attn)
 
         if exists(mask):
@@ -376,6 +396,7 @@ class FLASHTransformer(nn.Module):
         attn_dropout = 0.,
         norm_type = 'scalenorm',
         shift_tokens = True,
+        laplace_attn_fn = False,
         reduce_group_non_causal_attn = True
     ):
         super().__init__()
@@ -393,7 +414,7 @@ class FLASHTransformer(nn.Module):
         rotary_pos_emb = RotaryEmbedding(dim = min(32, query_key_dim))
         # max rotary embedding dimensions of 32, partial Rotary embeddings, from Wang et al - GPT-J
 
-        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass, shift_tokens = shift_tokens, reduce_group_non_causal_attn = reduce_group_non_causal_attn) for _ in range(depth)])
+        self.layers = nn.ModuleList([FLASH(dim = dim, group_size = group_size, query_key_dim = query_key_dim, expansion_factor = expansion_factor, causal = causal, dropout = attn_dropout, rotary_pos_emb = rotary_pos_emb, norm_klass = norm_klass, shift_tokens = shift_tokens, reduce_group_non_causal_attn = reduce_group_non_causal_attn, laplace_attn_fn = laplace_attn_fn) for _ in range(depth)])
 
         self.to_logits = nn.Sequential(
             nn.LayerNorm(dim),

@@ -25,6 +25,7 @@ gau = GAU(
     query_key_dim = 128,     # query / key dimension
     causal = True,           # autoregressive or not
     expansion_factor = 2,    # hidden dimension = dim * expansion_factor
+    laplace_attn_fn = True   # new Mega paper claims this is more stable than relu squared as attention function
 )
 
 x = torch.randn(1, 1024, 512)
@@ -46,7 +47,8 @@ flash = FLASH(
     group_size = 256,             # group size
     causal = True,                # autoregressive or not
     query_key_dim = 128,          # query / key dimension
-    expansion_factor = 2.         # hidden dimension = dim * expansion_factor
+    expansion_factor = 2.,        # hidden dimension = dim * expansion_factor
+    laplace_attn_fn = True   # new Mega paper claims this is more stable than relu squared as attention function
 )
 
 x = torch.randn(1, 1111, 512)     # sequence will be auto-padded to nearest group size
@@ -103,5 +105,13 @@ $ python train.py
     version   = {0.01},
     doi       = {10.5281/zenodo.5196578},
     url       = {https://doi.org/10.5281/zenodo.5196578}
+}
+```
+
+```bibtex
+@inproceedings{Ma2022MegaMA,
+    title   = {Mega: Moving Average Equipped Gated Attention},
+    author  = {Xuezhe Ma and Chunting Zhou and Xiang Kong and Junxian He and Liangke Gui and Graham Neubig and Jonathan May and Luke Zettlemoyer},
+    year    = {2022}
 }
 ```
