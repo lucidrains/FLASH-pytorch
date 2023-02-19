@@ -127,7 +127,7 @@ class LaplacianAttnFn(nn.Module):
 
     def forward(self, x):
         mu = math.sqrt(0.5)
-        std = math.sqrt(0.25 * math.pi)
+        std = math.sqrt((4 * math.pi) ** -1)
         return (1 + torch.special.erf((x - mu) / (std * math.sqrt(2)))) * 0.5
 
 # gated attention unit
