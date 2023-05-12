@@ -143,6 +143,7 @@ class GAU(nn.Module):
         causal = False,
         dropout = 0.,
         laplace_attn_fn = False,
+        rel_pos_bias = False,
         norm_klass = nn.LayerNorm
     ):
         super().__init__()
@@ -153,6 +154,8 @@ class GAU(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.attn_fn = ReLUSquared() if not laplace_attn_fn else LaplacianAttnFn()
+
+        self.rel_pos_bias = T5RelativePositionBias(scale = dim ** 0.5, causal = causal)
 
         self.to_hidden = nn.Sequential(
             nn.Linear(dim, hidden_dim * 2),
@@ -187,12 +190,15 @@ class GAU(nn.Module):
         qk = self.to_qk(normed_x)
         q, k = self.offsetscale(qk)
 
-        sim = einsum('b i d, b j d -> b i j', q, k) / seq_len
+        sim = einsum('b i d, b j d -> b i j', q, k)
+
+        if exists(self.rel_pos_bias):
+            sim = sim + self.rel_pos_bias(sim)
 
         if exists(rel_pos_bias):
             sim = sim + rel_pos_bias
 
-        attn = self.attn_fn(sim)
+        attn = self.attn_fn(sim / seq_len)
         attn = self.dropout(attn)
 
         if exists(mask):
