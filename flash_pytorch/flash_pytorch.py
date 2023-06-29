@@ -335,7 +335,7 @@ class FLASH(nn.Module):
 
         # group along sequence
 
-        quad_q, quad_k, lin_q, lin_k, v = map(lambda t: rearrange(t, 'b (g n) d -> b g n d', n = self.group_size), (quad_q, quad_k, lin_q, lin_k, v))
+        quad_q, quad_k, lin_q, lin_k, v = map(lambda t: rearrange(t, 'b (n g) d -> b n g d', g = self.group_size), (quad_q, quad_k, lin_q, lin_k, v))
 
         if exists(mask):
             mask = rearrange(mask, 'b (g j) -> b g 1 j', j = g)
