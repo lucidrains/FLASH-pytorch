@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
   name = 'FLASH-pytorch',
   packages = find_packages(exclude=[]),
-  version = '0.1.8',
+  version = '0.1.9',
   license='MIT',
   description = 'FLASH - Transformer Quality in Linear Time - Pytorch',
   author = 'Phil Wang',
@@ -19,7 +19,7 @@ setup(
   install_requires=[
     'einops>=0.4',
     'rotary-embedding-torch>=0.1.5',
-    'torch>=1.6',
+    'torch>=1.9',
   ],
   classifiers=[
     'Development Status :: 4 - Beta',
